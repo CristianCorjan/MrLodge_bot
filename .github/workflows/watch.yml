@@ -1,0 +1,46 @@
+name: watch mrlodge
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes (5 is GitHub's minimum)
+  workflow_dispatch:          # gives you a "Run workflow" button for testing
+
+permissions:
+  contents: write             # needed so the job can save seen.json
+
+concurrency:
+  group: watcher
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt
+
+      - name: Check for new offers
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SEARCH_URL: ${{ vars.SEARCH_URL }}
+        run: python monitor.py
+
+      - name: Save what was seen
+        if: always()
+        run: |
+          if [[ -n "$(git status --porcelain seen.json)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add seen.json
+            git commit -m "state $(date -u +%FT%TZ)"
+            git pull --rebase --autostash
+            git push
+          else
+            echo "nothing changed"
+          fi
