@@ -2,7 +2,7 @@ name: watch mrlodge
 
 on:
   schedule:
-    - cron: "*/10 * * * *"   # every 10 minutes (5 is GitHub's minimum)
+    - cron: "3,13,23,33,43,53 * * * *"   # every 10 minutes (5 is GitHub's minimum)
   workflow_dispatch:          # gives you a "Run workflow" button for testing
 
 permissions:
