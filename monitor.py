@@ -161,22 +161,36 @@ def escape(text):
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+def chat_ids():
+    """
+    Who gets the alerts. TELEGRAM_CHAT_ID may hold one id or several,
+    separated by commas, so more than one person can follow along.
+    Everyone listed must have pressed Start on the bot at least once.
+    """
+    return [x.strip() for x in TELEGRAM_CHAT_ID.split(",") if x.strip()]
+
+
 def telegram(text):
-    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+    if not TELEGRAM_TOKEN or not chat_ids():
         log("no Telegram credentials set, message not sent")
         return
-    r = requests.post(
-        f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
-        json={
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": text,
-            "parse_mode": "HTML",
-            "disable_web_page_preview": False,
-        },
-        timeout=TIMEOUT,
-    )
-    if not r.ok:
-        raise RuntimeError(f"Telegram error: {r.text}")
+    problems = []
+    for who in chat_ids():
+        r = requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
+            json={
+                "chat_id": who,
+                "text": text,
+                "parse_mode": "HTML",
+                "disable_web_page_preview": False,
+            },
+            timeout=TIMEOUT,
+        )
+        if not r.ok:
+            problems.append(f"{who}: {r.text[:120]}")
+    if problems:
+        # one bad recipient must not stop the others from being told
+        log("Telegram problems -> " + " | ".join(problems))
 
 
 def message_for(listing):
